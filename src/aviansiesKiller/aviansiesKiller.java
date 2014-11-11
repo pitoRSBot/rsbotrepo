@@ -141,8 +141,7 @@ public class aviansiesKiller extends PollingScript<ClientContext> implements Pai
 			}
 			break;
 		case ATTACK:
-			//if(ctx.players.local().healthPercent() > 40)
-			if(ctx.combatBar.health() > 1500)
+			if(returnHealthPercent() > 30)
 			{
 				if(!ctx.players.local().inCombat() || !ctx.players.local().interacting().valid() && getTarget().valid())
 				{
@@ -157,19 +156,19 @@ public class aviansiesKiller extends PollingScript<ClientContext> implements Pai
 							ctx.camera.turnTo(aviansie);
 						aviansie.hover();
 						if(aviansie.interact(false,"Attack","Aviansie"))
-						{
-							ctx.combatBar.regenerate();
+						{							
 							if(ctx.players.local().interacting() != null)
 							{
 							Condition.wait(new Callable<Boolean>() {
 							     @Override
 							     public Boolean call() {
 							    	 status = "Waiting for battle to end";
+							    	 ctx.combatBar.regenerate();
 							        return aviansie.healthPercent() == 0 || !aviansie.valid();
 							     }
 							}, 700, 50);
 							status = "Battle ended";		
-							if(ctx.combatBar.health() < 5500)
+							if(returnHealthPercent() < 85)
 							{							
 							Condition.sleep(12000);
 							}
@@ -205,6 +204,10 @@ public class aviansiesKiller extends PollingScript<ClientContext> implements Pai
                 ? ctx.npcs.nearest().poll() : ctx.npcs.select().id(aviansiesIDs).select(fightFilter).each(Interactive.doSetBounds(bounds)).nearest().poll();
     }
 
+    public double returnHealthPercent() {
+		return ctx.combatBar.health() * 100
+				/ ctx.combatBar.maximumHealth();
+	}
     private final Filter<Npc> aggroFilter = new Filter<Npc>() {
         @Override
         public boolean accept(Npc npc) {
@@ -231,7 +234,7 @@ public class aviansiesKiller extends PollingScript<ClientContext> implements Pai
 			
 		final GroundItem loot = ctx.groundItems.select().id(addyBarID).nearest().within(15).poll();
 		final GroundItem swordfish = ctx.groundItems.select().name("Swordfish").within(10).poll();
-		if(ctx.combatBar.health() < 4000)
+		if(returnHealthPercent() < 60)
 		{
 			return State.HEAL;
 		}
@@ -271,7 +274,7 @@ public class aviansiesKiller extends PollingScript<ClientContext> implements Pai
 		g.drawString("Ranged exp/h: " +xph, 10, 260);		
 		g.drawString("Status: " +status, 10, 280);
 		g.drawString("Profit: " +Profit + "gp (" + profith + " gp/h)", 10, 300);
-		g.drawString("Health: " +ctx.combatBar.health(), 10, 320);
+		g.drawString("Health: " +returnHealthPercent(), 10, 320);
 	}
 	
 	public void messaged(MessageEvent messageEvent) {
