@@ -110,11 +110,11 @@ public class aviansiesKiller extends PollingScript<ClientContext> implements Pai
 				if(ammo.valid())
 				{
 				status = ("Grabing ammo");
-				if(!loot.inViewport())
+				if(!ammo.inViewport())
 					ctx.camera.turnTo(ammo);
-				loot.hover();
+				ammo.hover();
 				Condition.sleep(Random.nextInt(250, 400));
-				loot.interact(false,"Take", ammoName);
+				ammo.interact(false,"Take", ammoName);
 				Condition.wait(new Callable<Boolean>() {
 		            @Override
 		            public Boolean call() throws Exception {
@@ -148,8 +148,7 @@ public class aviansiesKiller extends PollingScript<ClientContext> implements Pai
 					status = ("Searching for aviansie to kill");
 					final Npc aviansie = getTarget();	
 					if(aviansie.valid())
-					{
-						
+					{												
 						if(ctx.movement.distance(ctx.players.local().tile(),aviansie.tile()) > 9)
 						ctx.movement.step(aviansie.tile());
 						if(!aviansie.inViewport())
@@ -163,13 +162,14 @@ public class aviansiesKiller extends PollingScript<ClientContext> implements Pai
 							     @Override
 							     public Boolean call() {
 							    	 status = "Waiting for battle to end";
-							    	 ctx.combatBar.regenerate();
+							    	
 							        return aviansie.healthPercent() == 0 || !aviansie.valid();
 							     }
 							}, 700, 50);
 							status = "Battle ended";		
 							if(returnHealthPercent() < 85)
-							{							
+							{					
+							ctx.combatBar.regenerate();
 							Condition.sleep(12000);
 							}
 							status = "Going further";
