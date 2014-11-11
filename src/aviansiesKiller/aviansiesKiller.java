@@ -233,12 +233,13 @@ public class aviansiesKiller extends PollingScript<ClientContext> implements Pai
 	private State state() {
 			
 		final GroundItem loot = ctx.groundItems.select().id(addyBarID).nearest().within(15).poll();
+		final GroundItem ammo = ctx.groundItems.select().name(ammoName).nearest().within(15).poll();
 		final GroundItem swordfish = ctx.groundItems.select().name("Swordfish").within(10).poll();
 		if(returnHealthPercent() < 60)
 		{
 			return State.HEAL;
 		}
-		if(loot.valid())
+		if(loot.valid() || ammo.valid())
 		{
 			status = ("We found loot");
 			return State.LOOT;
