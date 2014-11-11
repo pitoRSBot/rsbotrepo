@@ -4,6 +4,13 @@ import java.awt.Color;
 import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.RenderingHints;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.io.Writer;
 import java.text.DecimalFormat;
 import java.util.Arrays;
 import java.util.concurrent.Callable;
@@ -29,9 +36,12 @@ import org.powerbot.script.rt6.ClientContext;
 public class aviansiesKiller extends PollingScript<ClientContext> implements PaintListener{
 
 	private int aviansiesIDs[] = {6244,6233,6241,6242,6236};
-	final int[] bounds = {-192, 192, -768, 0, -192, 192};
-	private String foodnames[] = {"Swordfish","Lobster"};	
+	final int[] bounds = {-192, 192, -1300, -800, -192, 192};	
 	
+	static String foodname = "";
+	static String ammoName = "";
+	
+	static boolean pickAmmo = false;	
 	int addyBarID = 2362;
 	
 	static int rangedStartXP = 0;	
@@ -46,18 +56,35 @@ public class aviansiesKiller extends PollingScript<ClientContext> implements Pai
 	
 	static boolean setup = true;
 	
-	
+	aviansiesKillerGUI g = new aviansiesKillerGUI();
+	static boolean guiWait = true;
 	@Override
 	public void poll() {
 		if(setup == true)
 		{
+			g.setVisible(true);
+			do
+			{
+				Condition.sleep(1000);
+			}
+			while(!ctx.game.loggedIn());
 			rangedStartXP = ctx.skills.experience(Constants.SKILLS_RANGE);
 			startTime = System.currentTimeMillis();
+			addyBarsStart = ctx.backpack.select().name("Adamant bar").count(true);
 			setup = false;
+			while(guiWait == true)
+			{
+	            try {
+	                Condition.sleep(500);
+	            } catch (Exception e) {
+	                e.printStackTrace();
+	            }
+			}
 		}
 		switch(state())
 		{
 		case LOOT:
+			Profit = (ctx.backpack.select().name("Adamant bar").count(true) - addyBarsStart )*GeItem.price(2361);
 			final GroundItem loot = ctx.groundItems.select().id(addyBarID).nearest().within(10).poll();	
 			final GroundItem swordfish = ctx.groundItems.select().name("Swordfish").within(10).poll();
 			if(loot.valid())
@@ -67,7 +94,7 @@ public class aviansiesKiller extends PollingScript<ClientContext> implements Pai
 				ctx.camera.turnTo(loot);
 			loot.hover();
 			Condition.sleep(Random.nextInt(250, 400));
-			loot.interact(false,"Take","Adamant bar");
+			loot.interact(false,"Take","Adamant");
 			Condition.wait(new Callable<Boolean>() {
 	            @Override
 	            public Boolean call() throws Exception {
@@ -76,6 +103,26 @@ public class aviansiesKiller extends PollingScript<ClientContext> implements Pai
 	            }
 	        });
 			status = ("Looted!");	  
+			}
+			if(pickAmmo == true)
+			{
+				final GroundItem ammo = ctx.groundItems.select().name(ammoName).nearest().within(10).poll();
+				if(ammo.valid())
+				{
+				status = ("Grabing ammo");
+				if(!loot.inViewport())
+					ctx.camera.turnTo(ammo);
+				loot.hover();
+				Condition.sleep(Random.nextInt(250, 400));
+				loot.interact(false,"Take", ammoName);
+				Condition.wait(new Callable<Boolean>() {
+		            @Override
+		            public Boolean call() throws Exception {
+		            	status = ("Running!");
+		                return !ctx.players.local().inMotion();
+		            }
+		        });
+				}
 			}
 			if(swordfish.valid() && ctx.backpack.select().count() < 26)
 			{
@@ -94,7 +141,8 @@ public class aviansiesKiller extends PollingScript<ClientContext> implements Pai
 			}
 			break;
 		case ATTACK:
-			if(ctx.players.local().healthPercent() > 40)
+			//if(ctx.players.local().healthPercent() > 40)
+			if(ctx.combatBar.health() > 1500)
 			{
 				if(!ctx.players.local().inCombat() || !ctx.players.local().interacting().valid() && getTarget().valid())
 				{
@@ -102,6 +150,7 @@ public class aviansiesKiller extends PollingScript<ClientContext> implements Pai
 					final Npc aviansie = getTarget();	
 					if(aviansie.valid())
 					{
+						
 						if(ctx.movement.distance(ctx.players.local().tile(),aviansie.tile()) > 9)
 						ctx.movement.step(aviansie.tile());
 						if(!aviansie.inViewport())
@@ -109,6 +158,7 @@ public class aviansiesKiller extends PollingScript<ClientContext> implements Pai
 						aviansie.hover();
 						if(aviansie.interact(false,"Attack","Aviansie"))
 						{
+							ctx.combatBar.regenerate();
 							if(ctx.players.local().interacting() != null)
 							{
 							Condition.wait(new Callable<Boolean>() {
@@ -119,9 +169,8 @@ public class aviansiesKiller extends PollingScript<ClientContext> implements Pai
 							     }
 							}, 700, 50);
 							status = "Battle ended";		
-							if(ctx.players.local().healthPercent() < 90)
-							{
-							ctx.keyboard.send("=");
+							if(ctx.combatBar.health() < 5500)
+							{							
 							Condition.sleep(12000);
 							}
 							status = "Going further";
@@ -136,16 +185,24 @@ public class aviansiesKiller extends PollingScript<ClientContext> implements Pai
 			}
 			break;
 		case HEAL:			
-				Item food = ctx.backpack.name(foodnames).poll();
-				food.interact("Eat");		
+				Item swordfishs = ctx.backpack.select().name("Swordfish").poll();
+				if(swordfishs.interact("Eat"))
+				{
+					
+				}
+				else
+				{
+					Item food = ctx.backpack.select().name(foodname).poll();
+					food.interact("Eat");
+				}
 		break;		
 	
 		
 		}
-}
+}	
     public Npc getTarget() {
         return !ctx.npcs.select().select(aggroFilter).isEmpty()
-                ? ctx.npcs.nearest().poll() : ctx.npcs.select().id(aviansiesIDs).select(fightFilter).nearest().poll();
+                ? ctx.npcs.nearest().poll() : ctx.npcs.select().id(aviansiesIDs).select(fightFilter).each(Interactive.doSetBounds(bounds)).nearest().poll();
     }
 
     private final Filter<Npc> aggroFilter = new Filter<Npc>() {
@@ -171,9 +228,10 @@ public class aviansiesKiller extends PollingScript<ClientContext> implements Pai
 		ATTACK, HEAL, LOOT, IDLE
 	}
 	private State state() {
+			
 		final GroundItem loot = ctx.groundItems.select().id(addyBarID).nearest().within(15).poll();
 		final GroundItem swordfish = ctx.groundItems.select().name("Swordfish").within(10).poll();
-		if(ctx.players.local().healthPercent() < 50)
+		if(ctx.combatBar.health() < 4000)
 		{
 			return State.HEAL;
 		}
@@ -189,7 +247,7 @@ public class aviansiesKiller extends PollingScript<ClientContext> implements Pai
 		}
 		return State.ATTACK;
 	}
-	public String runTime(long i) {
+	public static String runTime(long i) {
 		DecimalFormat nf = new DecimalFormat("00");
 		long millis = System.currentTimeMillis() - i;
 		long hours = millis / (1000 * 60 * 60);
@@ -212,6 +270,16 @@ public class aviansiesKiller extends PollingScript<ClientContext> implements Pai
 		int profith = (int)Math.floor(Profit * 3600000D / totalRunTime);
 		g.drawString("Ranged exp/h: " +xph, 10, 260);		
 		g.drawString("Status: " +status, 10, 280);
+		g.drawString("Profit: " +Profit + "gp (" + profith + " gp/h)", 10, 300);
+		g.drawString("Health: " +ctx.combatBar.health(), 10, 320);
+	}
+	
+	public void messaged(MessageEvent messageEvent) {
+
+            if(messageEvent.getMessage().contains("wound")){
+            	status = "It looks like we attacked wrong monster!";                
+            }
+        
 	}
 
 }
