@@ -25,17 +25,14 @@ import org.powerbot.script.rt6.ClientAccessor;
 import org.powerbot.script.rt6.ClientContext;
 
 
-@Script.Manifest(name = "aviansiesKiller", description = "zabija se")
+@Script.Manifest(name = "aviansiesKiller", description = "It's killing aviansies")
 public class aviansiesKiller extends PollingScript<ClientContext> implements PaintListener{
 
 	private int aviansiesIDs[] = {6244,6233,6241,6242,6236};
 	final int[] bounds = {-192, 192, -768, 0, -192, 192};
-	private String foodnames[] = {"Swordfish","Lobster"};
+	private String foodnames[] = {"Swordfish","Lobster"};	
 	
-	private int rejuvID = 20;
-	private int addyBarID = 2362;
-	private int shieldID = 1199;
-	private int offHandID = 25891;
+	int addyBarID = 2362;
 	
 	static int rangedStartXP = 0;	
 	static int rangedXPMade;
@@ -97,7 +94,6 @@ public class aviansiesKiller extends PollingScript<ClientContext> implements Pai
 			}
 			break;
 		case ATTACK:
-			Action rejuv = 	ctx.combatBar.id(rejuvID).select().poll();
 			if(ctx.players.local().healthPercent() > 40)
 			{
 				if(!ctx.players.local().inCombat() || !ctx.players.local().interacting().valid() && getTarget().valid())
